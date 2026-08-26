@@ -22,7 +22,7 @@ jobs:
           port: 21
           server-dir: /htdocs/
           exclude: |
-            **/ .git*
-            **/ .git*/**
-            **/node_modules/**
+            .git*
+            .git*/**
+            /node_modules/**
             .env
