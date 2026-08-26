@@ -1,6 +1,8 @@
 <?php
+// ไม่แสดง error ให้ผู้ใช้ (กันข้อมูลรั่ว) — เก็บลง log แทน
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 header('Content-Type: text/html; charset=UTF-8');
 
 if (file_exists('config/database.php')) {
@@ -84,10 +86,11 @@ if (!empty($phone_search)) {
                         <div class="booking-item">
                             <div class="booking-header">
                                 <span style="font-weight: 600; color: #1E293B;">ผู้จอง: <?php echo htmlspecialchars($b['fullname']); ?></span>
-                                <span class="badge <?php echo ($b['status'] == 'confirmed' ? 'success' : ''); ?>">
-                                    <?php 
+                                <span class="badge <?php echo ($b['status'] == 'approved' ? 'success' : ''); ?>">
+                                    <?php
                                         if($b['status'] == 'pending') echo 'รอดำเนินการ / รอตรวจสอบ';
-                                        elseif($b['status'] == 'confirmed') echo 'ยืนยันแล้ว';
+                                        elseif($b['status'] == 'approved') echo 'อนุมัติแล้ว';
+                                        elseif($b['status'] == 'cancelled') echo 'ยกเลิกแล้ว';
                                         else echo htmlspecialchars($b['status']);
                                     ?>
                                 </span>

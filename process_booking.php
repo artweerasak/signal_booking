@@ -1,7 +1,17 @@
 <?php
+// ไม่แสดง error ให้ผู้ใช้เห็น (กันข้อมูลรั่ว) — เก็บลง log แทน
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 header('Content-Type: text/html; charset=UTF-8');
+
+// กล่องข้อความ error แบบสวยงาม (ใช้ซ้ำได้)
+function err_box($msg) {
+    return "<div style='padding:20px; font-family:sans-serif;'>
+            <h3 style='color:#DC2626;'>" . htmlspecialchars($msg) . "</h3>
+            <a href='javascript:history.back()' style='color:#15803D; font-weight:bold;'>❮ ย้อนกลับไปแก้ไข</a>
+         </div>";
+}
 
 // ดึงไฟล์เชื่อมต่อฐานข้อมูล
 if (file_exists('config/database.php')) {
@@ -18,33 +28,43 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // รับค่าจาก Form
 $user_type = $_POST['user_type'] ?? 'General';
 $fullname = trim($_POST['fullname'] ?? '');
-$phone = trim($_POST['phone'] ?? '');
+$phone = preg_replace('/\D/', '', $_POST['phone'] ?? ''); // เก็บเฉพาะตัวเลข
 $total_price = floatval($_POST['total_price'] ?? 0);
 $booking_items_raw = $_POST['booking_items'] ?? '[]';
 $booking_items = json_decode($booking_items_raw, true);
 
-if (empty($fullname) || empty($phone) || empty($booking_items) || !is_array($booking_items)) {
-    die("<div style='padding:20px; font-family:sans-serif;'>
-            <h3 style='color:#DC2626;'>ข้อมูลไม่ครบถ้วนหรือไม่ถูกต้อง</h3>
-            <a href='javascript:history.back()' style='color:#15803D; font-weight:bold;'>❮ ย้อนกลับไปแก้ไข</a>
-         </div>");
+if ($fullname === '' || strlen($phone) < 9 || strlen($phone) > 10 || empty($booking_items) || !is_array($booking_items)) {
+    die(err_box("ข้อมูลไม่ครบถ้วนหรือไม่ถูกต้อง (กรอกชื่อ และเบอร์โทร 9-10 หลัก)"));
 }
 
-// อัปโหลดสลิป
+// อัปโหลดสลิป — ตรวจชนิดไฟล์จริง (MIME) + จำกัดขนาด ไม่เชื่อนามสกุลจากผู้ใช้
 $slip_filename = "";
 if (isset($_FILES['payment_slip']) && $_FILES['payment_slip']['error'] === UPLOAD_ERR_OK) {
     $upload_dir = 'uploads/slips/';
-    if (!file_exists($upload_dir)) {
-        @mkdir($upload_dir, 0777, true);
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0755, true);
     }
 
-    $file_ext = strtolower(pathinfo($_FILES['payment_slip']['name'], PATHINFO_EXTENSION));
-    $allowed_ext = ['jpg', 'jpeg', 'png', 'webp'];
+    $tmp  = $_FILES['payment_slip']['tmp_name'];
+    $size = $_FILES['payment_slip']['size'];
+    $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
 
-    if (in_array($file_ext, $allowed_ext)) {
-        $slip_filename = 'slip_' . time() . '_' . rand(1000, 9999) . '.' . $file_ext;
-        $target_path = $upload_dir . $slip_filename;
-        move_uploaded_file($_FILES['payment_slip']['tmp_name'], $target_path);
+    if ($size > 5 * 1024 * 1024) {
+        die(err_box("ไฟล์สลิปใหญ่เกิน 5MB กรุณาย่อขนาดก่อน"));
+    }
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime  = finfo_file($finfo, $tmp);
+    finfo_close($finfo);
+
+    if (!isset($allowed[$mime])) {
+        die(err_box("ชนิดไฟล์สลิปไม่ถูกต้อง (รับเฉพาะรูป JPG/PNG/WEBP)"));
+    }
+
+    $slip_filename = 'slip_' . time() . '_' . rand(1000, 9999) . '.' . $allowed[$mime];
+    if (!move_uploaded_file($tmp, $upload_dir . $slip_filename)) {
+        error_log('slip upload failed for ' . $phone);
+        $slip_filename = ""; // อัปโหลดไม่สำเร็จ — บันทึกการจองต่อได้แต่ไม่มีสลิป
     }
 }
 
@@ -69,15 +89,28 @@ try {
     $stmt->execute([$phone, $fullname, $phone, $user_type, $total_price, $slip_filename]);
     $booking_id = $active_pdo->lastInsertId();
 
-    // 2. บันทึกรายการสนามลงตาราง booking_items
-    $stmt_item = $active_pdo->prepare("INSERT INTO booking_items (booking_id, court_id, booking_date, time_slot, price) VALUES (?, ?, ?, ?, ?)");
+    // 2. บันทึกรายการสนามลงตาราง booking_items (เก็บ slot_id ด้วย เพื่อเช็ครอบว่าง)
+    $check = $active_pdo->prepare("
+        SELECT COUNT(*) FROM booking_items bi
+        JOIN bookings b ON bi.booking_id = b.id
+        WHERE bi.court_id = ? AND bi.booking_date = ? AND bi.slot_id = ?
+          AND b.status IN ('pending','approved')
+    ");
+    $stmt_item = $active_pdo->prepare("INSERT INTO booking_items (booking_id, court_id, slot_id, booking_date, time_slot, price) VALUES (?, ?, ?, ?, ?, ?)");
     foreach ($booking_items as $item) {
         $court_id = intval($item['courtId'] ?? 1);
+        $slot_id  = intval($item['slotId'] ?? 0);
         $date = $item['date'] ?? date('Y-m-d');
         $time = $item['timeText'] ?? '';
         $price = floatval($item['price'] ?? 0);
-        
-        $stmt_item->execute([$booking_id, $court_id, $date, $time, $price]);
+
+        // กันจองซ้ำ: ถ้ารอบนี้ถูกจองไปแล้ว (pending/approved) ให้ยกเลิกทั้งรายการ
+        $check->execute([$court_id, $date, $slot_id]);
+        if ($check->fetchColumn() > 0) {
+            throw new Exception("รอบเวลา {$time} (สนาม {$court_id}, วันที่ {$date}) ถูกจองไปแล้ว กรุณาเลือกรอบอื่น");
+        }
+
+        $stmt_item->execute([$booking_id, $court_id, $slot_id, $date, $time, $price]);
     }
 
     // ยืนยัน Transaction
@@ -87,12 +120,13 @@ try {
     if (isset($active_pdo) && $active_pdo instanceof PDO && $active_pdo->inTransaction()) {
         $active_pdo->rollBack();
     }
-    die("<div style='padding:20px; font-family:sans-serif;'>
-            <h3 style='color:#DC2626;'>เกิดข้อผิดพลาดในการบันทึกข้อมูล:</h3>
-            <p style='color:#4B5563;'>" . htmlspecialchars($e->getMessage()) . "</p>
-            <br>
-            <a href='javascript:history.back()' style='color:#15803D; font-weight:bold; text-decoration:none;'>❮ ย้อนกลับไปแก้ไข</a>
-         </div>");
+    error_log('booking failed: ' . $e->getMessage());
+    // PDOException = ปัญหาระบบ ไม่โชว์รายละเอียด (กันข้อมูลรั่ว)
+    // Exception ที่เราตั้งเอง (เช่น "รอบถูกจองแล้ว") = โชว์ให้ผู้ใช้เห็นได้
+    $msg = ($e instanceof PDOException)
+        ? "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง"
+        : $e->getMessage();
+    die(err_box($msg));
 }
 ?>
 <!DOCTYPE html>
