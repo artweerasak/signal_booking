@@ -1,0 +1,10 @@
+# ความลับ — ห้ามเข้า git
+config/db_config.php
+
+# ข้อมูลผู้ใช้ (สลิปโอนเงิน) — ไม่ควรอยู่ใน git
+uploads/slips/*
+!uploads/slips/.gitkeep
+
+# ไฟล์ระบบ/เครื่องมือ
+.DS_Store
+.aider*
