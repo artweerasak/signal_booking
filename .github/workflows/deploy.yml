@@ -8,7 +8,7 @@ on:
 jobs:
   web-deploy:
     name: Deploy
-    run-on: ubuntu-latest
+    run-ons: ubuntu-latest
     steps:
       - name: Get lastest code
         uses: actions/checkout@v4
@@ -17,7 +17,7 @@ jobs:
         uses: Samkirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{secrets.FTP_SERVER}}
-          username: ${{{secrets.FTP_USERNAME}
+          username: ${{secrets.FTP_USERNAME}}
           password: ${{secrets.FTP_PASSWORD}}
           port: 21
           server-dir: /htdocs/
