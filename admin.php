@@ -88,6 +88,7 @@ $csrf = $_SESSION['csrf'];
     <div class="header">
         <h1>🎾 แดชบอร์ดจัดการการจอง</h1>
         <div class="nav">
+            <a href="admin_calendar.php">🗓️ ปฏิทินสนาม</a>
             <a href="admin_add_booking.php">➕ เพิ่ม/ล็อกการจอง</a>
             <a href="admin_bulk_lock.php">🔒 ล็อกประจำ</a>
             <a href="admin_logout.php" class="logout">ออกจากระบบ ↪</a>
