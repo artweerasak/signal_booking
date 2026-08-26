@@ -8,6 +8,11 @@ if (!file_exists($cfgFile)) {
 }
 $cfg = require $cfgFile;
 
+// กุญแจลับสำหรับกันบอท (ใช้เซ็น token)
+if (!defined('APP_SECRET')) {
+    define('APP_SECRET', $cfg['app_secret'] ?? 'change-me-please');
+}
+
 try {
     $conn = new PDO(
         "mysql:host={$cfg['host']};dbname={$cfg['dbname']};charset=utf8mb4",

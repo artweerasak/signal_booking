@@ -1,5 +1,6 @@
 <?php
 require_once 'config/database.php';
+require_once 'config/security.php';
 
 // รับค่า POST จากหน้า index.php
 $booking_items_json = $_POST['booking_items'] ?? '[]';
@@ -187,6 +188,12 @@ foreach ($booking_items as $item) {
             <input type="hidden" name="fullname" value="<?= htmlspecialchars($fullname) ?>">
             <input type="hidden" name="phone" value="<?= htmlspecialchars($phone) ?>">
             <input type="hidden" name="total_price" value="<?= $total_price ?>">
+
+            <!-- กันบอท: token เวลา (เซ็นด้วย secret) -->
+            <input type="hidden" name="form_ts" value="<?= htmlspecialchars(form_time_token()) ?>">
+            <!-- กันบอท: honeypot (คนมองไม่เห็น บอทมักกรอก) -->
+            <input type="text" name="website" value="" tabindex="-1" autocomplete="off"
+                   aria-hidden="true" style="position:absolute; left:-9999px; top:-9999px; opacity:0; height:0; width:0;">
 
             <div class="checkout-grid">
                 

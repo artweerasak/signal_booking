@@ -1,21 +1,27 @@
 <?php
 session_start();
 require 'config/database.php';
+require 'config/security.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = $_POST['username'];
-    $password = $_POST['password'];
-
-    $stmt = $conn->prepare("SELECT id, password_hash FROM admins WHERE username = :username");
-    $stmt->execute(['username' => $username]);
-    $admin = $stmt->fetch();
-
-    if ($admin && password_verify($password, $admin['password_hash'])) {
-        $_SESSION['admin_id'] = $admin['id'];
-        header('Location: admin.php');
-        exit();
+    // กัน brute-force: ล็อกอินได้ไม่เกิน 8 ครั้งต่อ 5 นาที ต่อ IP
+    if (!rate_limit_ok($conn, 'admin_login', 8, 300)) {
+        $error_message = "พยายามเข้าสู่ระบบบ่อยเกินไป กรุณารอ 5 นาทีแล้วลองใหม่";
     } else {
-        $error_message = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
+        $username = $_POST['username'] ?? '';
+        $password = $_POST['password'] ?? '';
+
+        $stmt = $conn->prepare("SELECT id, password_hash FROM admins WHERE username = :username");
+        $stmt->execute(['username' => $username]);
+        $admin = $stmt->fetch();
+
+        if ($admin && password_verify($password, $admin['password_hash'])) {
+            $_SESSION['admin_id'] = $admin['id'];
+            header('Location: admin.php');
+            exit();
+        } else {
+            $error_message = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
+        }
     }
 }
 ?>

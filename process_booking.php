@@ -19,10 +19,28 @@ if (file_exists('config/database.php')) {
 } else {
     die("ไม่พบไฟล์ config/database.php กรุณาตรวจสอบตำแหน่งไฟล์");
 }
+require_once 'config/security.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php');
     exit;
+}
+
+// ═══ กันบอท ═══
+// 1) honeypot ถูกกรอก = บอท → ตัดจบเงียบๆ (ไม่บอกสาเหตุ)
+if (is_honeypot_filled('website')) {
+    error_log('bot blocked (honeypot) ip=' . client_ip());
+    die(err_box("ไม่สามารถดำเนินการได้"));
+}
+// 2) ส่งฟอร์มเร็วผิดปกติ/หมดอายุ/token ปลอม = บอท
+if (!check_form_time($_POST['form_ts'] ?? '', 3, 3600)) {
+    error_log('bot blocked (timing) ip=' . client_ip());
+    die(err_box("กรุณาลองใหม่อีกครั้ง (โหลดฟอร์มใหม่แล้วกรอกช้าลงเล็กน้อย)"));
+}
+// 3) จำกัดอัตรา: จองได้ไม่เกิน 5 ครั้งต่อ 10 นาที ต่อ IP
+if (!rate_limit_ok($conn, 'booking', 5, 600)) {
+    error_log('rate limited (booking) ip=' . client_ip());
+    die(err_box("คุณทำรายการบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่"));
 }
 
 // รับค่าจาก Form

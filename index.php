@@ -418,25 +418,24 @@ $selected_date = $_GET['booking_date'] ?? date('Y-m-d');
         setInterval(() => { moveSlide(1); }, 6000);
 
         // Rate Rules: 06:00 - 18:00 = 120฿ | 18:00 - 21:00 = 150฿
-        const rawSlots = [
-            { id: 1, start: '06:00', end: '07:00', price: 120, type: 'day' },
-            { id: 2, start: '07:00', end: '08:00', price: 120, type: 'day' },
-            { id: 3, start: '08:00', end: '09:00', price: 120, type: 'day', disabled: true },
-            { id: 4, start: '09:00', end: '10:00', price: 120, type: 'day' },
-            { id: 5, start: '10:00', end: '11:00', price: 120, type: 'day' },
-            { id: 6, start: '11:00', end: '12:00', price: 120, type: 'day' },
-            { id: 7, start: '12:00', end: '13:00', price: 120, type: 'day' },
-            { id: 8, start: '13:00', end: '14:00', price: 120, type: 'day' },
-            { id: 9, start: '14:00', end: '15:00', price: 120, type: 'day' },
-            { id: 10, start: '15:00', end: '16:00', price: 120, type: 'day' },
-            { id: 11, start: '16:00', end: '17:00', price: 120, type: 'day' },
-            { id: 12, start: '17:00', end: '18:00', price: 120, type: 'day' },
-            { id: 13, start: '18:00', end: '19:00', price: 150, type: 'night' },
-            { id: 14, start: '19:00', end: '20:00', price: 150, type: 'night' },
-            { id: 15, start: '20:00', end: '21:00', price: 150, type: 'night' },
-        ];
-
+        // ดึงสถานะรอบว่างจริงจากเซิร์ฟเวอร์ (กันจองซ้ำ + แสดง "ไม่ว่าง")
+        let rawSlots = [];   // จะถูกเติมจาก api/get_slots.php
         let cart = [];
+
+        async function loadSlots() {
+            const date = document.getElementById('bookingDate').value;
+            const court = document.getElementById('courtSelect').value;
+            const container = document.getElementById('slotsContainer');
+            container.innerHTML = '<div style="padding:20px; color:#94A3B8;">กำลังโหลดรอบเวลา...</div>';
+            try {
+                const res = await fetch(`api/get_slots.php?date=${encodeURIComponent(date)}&court_id=${encodeURIComponent(court)}`);
+                const data = await res.json();
+                rawSlots = (data && data.success) ? data.slots : [];
+            } catch (e) {
+                rawSlots = [];
+            }
+            renderSlots();
+        }
 
         function renderSlots() {
             const container = document.getElementById('slotsContainer');
@@ -482,7 +481,7 @@ $selected_date = $_GET['booking_date'] ?? date('Y-m-d');
         		btn.className = `slot ${slot.type} ${isDisabled ? 'disabled' : ''} ${isSelected ? 'selected' : ''}`;
         
         		let checkBadge = isSelected ? '<div class="slot-badge">✓</div>' : '';
-        		let priceText = slot.disabled ? 'จองแล้ว' : (isTimePassed ? 'หมดเวลา' : slot.price + '฿');
+        		let priceText = slot.status === 'booked' ? 'ไม่ว่าง' : (slot.disabled ? 'หมดเวลา' : slot.price + '฿');
 
         		btn.innerHTML = `
             		${checkBadge}
@@ -579,11 +578,11 @@ $selected_date = $_GET['booking_date'] ?? date('Y-m-d');
             btnConfirm.classList.add('active');
         }
 
-        document.getElementById('bookingDate').addEventListener('change', renderSlots);
-        document.getElementById('courtSelect').addEventListener('change', renderSlots);
+        document.getElementById('bookingDate').addEventListener('change', loadSlots);
+        document.getElementById('courtSelect').addEventListener('change', loadSlots);
 
-        // เรียกใช้งานตอนโหลดหน้าครั้งแรก
-        renderSlots();
+        // เรียกใช้งานตอนโหลดหน้าครั้งแรก (ดึงสถานะรอบว่างจริงจากเซิร์ฟเวอร์)
+        loadSlots();
 
         // 1. ฟังก์ชันตรวจสอบชื่อ-นามสกุล
         function validateName() {
