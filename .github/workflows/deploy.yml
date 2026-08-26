@@ -8,7 +8,7 @@ on:
 jobs:
   web-deploy:
     name: Deploy
-    run-ons: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Get lastest code
         uses: actions/checkout@v4
