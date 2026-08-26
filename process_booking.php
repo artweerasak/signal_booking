@@ -20,6 +20,8 @@ if (file_exists('config/database.php')) {
     die("ไม่พบไฟล์ config/database.php กรุณาตรวจสอบตำแหน่งไฟล์");
 }
 require_once 'config/security.php';
+require_once 'config/pricing.php';
+$slotConfig = require 'config/slots.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php');
@@ -99,36 +101,51 @@ try {
         throw new Exception("ไม่พบตัวแปรเชื่อมต่อฐานข้อมูล PDO ในไฟล์ config/database.php");
     }
 
-    // เริ่มต้น Transaction ของ PDO
+    // ── คิดราคาฝั่งเซิร์ฟเวอร์ (ไม่เชื่อราคาที่ส่งมาจากผู้ใช้ + ใช้ราคาตามวัน) ──
+    $slotMap = [];
+    foreach ($slotConfig['slots'] as $s) $slotMap[$s['id']] = $s;
+    $base = get_base_prices($active_pdo);
+    $overrideCache = [];
+
+    $prepared = [];
+    $total = 0;
+    foreach ($booking_items as $item) {
+        $court_id = intval($item['courtId'] ?? 1);
+        $slot_id  = intval($item['slotId'] ?? 0);
+        $date     = $item['date'] ?? date('Y-m-d');
+        if (!isset($slotMap[$slot_id]) || !isset($slotConfig['courts'][$court_id]) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            throw new Exception("ข้อมูลรอบเวลาไม่ถูกต้อง");
+        }
+        $slot = $slotMap[$slot_id];
+        if (!array_key_exists($date, $overrideCache)) $overrideCache[$date] = get_price_override($active_pdo, $date);
+        $price = slot_price($base, $overrideCache[$date], $slot['type']);   // ราคาจากเซิร์ฟเวอร์
+        $time  = $slot['start'] . ' - ' . $slot['end'];                     // เวลาจากเซิร์ฟเวอร์
+        $prepared[] = ['court' => $court_id, 'slot' => $slot_id, 'date' => $date, 'time' => $time, 'price' => $price];
+        $total += $price;
+    }
+
+    // เริ่มต้น Transaction
     $active_pdo->beginTransaction();
 
-    // 1. บันทึกข้อมูลลงตาราง bookings (บันทึก phone ลงใน booking_no ด้วยเลยเพื่อให้ใช้เบอร์โทรเป็นรหัสอ้างอิง)
+    // 1. บันทึก bookings (total_price คิดจากเซิร์ฟเวอร์ ไม่เชื่อค่าจากผู้ใช้)
     $stmt = $active_pdo->prepare("INSERT INTO bookings (booking_no, fullname, phone, user_type, total_price, slip_image, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())");
-    $stmt->execute([$phone, $fullname, $phone, $user_type, $total_price, $slip_filename]);
+    $stmt->execute([$phone, $fullname, $phone, $user_type, $total, $slip_filename]);
     $booking_id = $active_pdo->lastInsertId();
 
-    // 2. บันทึกรายการสนามลงตาราง booking_items (เก็บ slot_id ด้วย เพื่อเช็ครอบว่าง)
+    // 2. เช็ครอบว่าง (กันจองซ้ำ) แล้วบันทึก booking_items
     $check = $active_pdo->prepare("
         SELECT COUNT(*) FROM booking_items bi
         JOIN bookings b ON bi.booking_id = b.id
         WHERE bi.court_id = ? AND bi.booking_date = ? AND bi.slot_id = ?
-          AND b.status IN ('pending','approved')
+          AND b.status IN ('pending','approved') AND b.id <> ?
     ");
     $stmt_item = $active_pdo->prepare("INSERT INTO booking_items (booking_id, court_id, slot_id, booking_date, time_slot, price) VALUES (?, ?, ?, ?, ?, ?)");
-    foreach ($booking_items as $item) {
-        $court_id = intval($item['courtId'] ?? 1);
-        $slot_id  = intval($item['slotId'] ?? 0);
-        $date = $item['date'] ?? date('Y-m-d');
-        $time = $item['timeText'] ?? '';
-        $price = floatval($item['price'] ?? 0);
-
-        // กันจองซ้ำ: ถ้ารอบนี้ถูกจองไปแล้ว (pending/approved) ให้ยกเลิกทั้งรายการ
-        $check->execute([$court_id, $date, $slot_id]);
+    foreach ($prepared as $p) {
+        $check->execute([$p['court'], $p['date'], $p['slot'], $booking_id]);
         if ($check->fetchColumn() > 0) {
-            throw new Exception("รอบเวลา {$time} (สนาม {$court_id}, วันที่ {$date}) ถูกจองไปแล้ว กรุณาเลือกรอบอื่น");
+            throw new Exception("รอบเวลา {$p['time']} (สนาม {$p['court']}, วันที่ {$p['date']}) ถูกจองไปแล้ว กรุณาเลือกรอบอื่น");
         }
-
-        $stmt_item->execute([$booking_id, $court_id, $slot_id, $date, $time, $price]);
+        $stmt_item->execute([$booking_id, $p['court'], $p['slot'], $p['date'], $p['time'], $p['price']]);
     }
 
     // ยืนยัน Transaction

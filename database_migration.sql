@@ -43,3 +43,17 @@ CREATE TABLE IF NOT EXISTS rate_limits (
     created_at DATETIME NOT NULL,
     INDEX idx_rl (action, ip, created_at)
 );
+
+-- 9) ราคาค่าเช่าสนาม
+--    ราคาพื้นฐาน (กลางวัน/กลางคืน) เก็บใน system_settings
+INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES
+    ('base_price_day', '120'),
+    ('base_price_night', '150');
+
+--    ตารางปรับราคาเฉพาะวัน — ถ้าวันไหนมีในตารางนี้จะใช้ราคานี้ ถ้าไม่มีใช้ราคาพื้นฐาน
+CREATE TABLE IF NOT EXISTS price_overrides (
+    override_date DATE PRIMARY KEY,
+    price_day INT NOT NULL,
+    price_night INT NOT NULL,
+    note VARCHAR(255) NULL
+);

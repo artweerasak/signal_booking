@@ -5,6 +5,7 @@ header('Content-Type: application/json');
 date_default_timezone_set('Asia/Bangkok');
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/pricing.php';
 $slotConfig = require __DIR__ . '/../config/slots.php';
 
 $date     = $_GET['date'] ?? date('Y-m-d');
@@ -31,8 +32,13 @@ try {
     $stmt->execute([$date, $court_id]);
     $bookedSlotIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
 
+    // ราคาของวันนี้ (ปรับเฉพาะวันถ้ามี ไม่งั้นใช้ราคาพื้นฐาน)
+    $base = get_base_prices($conn);
+    $override = get_price_override($conn, $date);
+
     $out = [];
     foreach ($baseSlots as $slot) {
+        $slot['price'] = slot_price($base, $override, $slot['type']); // ราคาตามวัน
         $isBooked = in_array((int)$slot['id'], $bookedSlotIds, true);
 
         // รอบที่เวลาเริ่มผ่านไปแล้ว (เฉพาะวันนี้) หรือเลือกวันย้อนหลัง = ปิด
