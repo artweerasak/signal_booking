@@ -188,7 +188,13 @@ try {
     <div class="card">
         <div class="icon">🎉</div>
         <h2>ส่งข้อมูลการจองสำเร็จ!</h2>
-        <p>ระบบได้รับข้อมูลและหลักฐานการโอนเงินเรียบร้อยแล้ว ใช้เบอร์โทรศัพท์ <b style="color: #15803D; font-size: 1.1rem;"><?php echo htmlspecialchars($phone); ?></b> เป็นรหัสอ้างอิงในการตรวจสอบ เจ้าหน้าที่จะดำเนินการโดยเร็วที่สุด</p>
+        <p>ระบบได้รับข้อมูลและหลักฐานการโอนเงินเรียบร้อยแล้ว เจ้าหน้าที่จะดำเนินการโดยเร็วที่สุด</p>
+        <div style="background:#F0FDF4; border:1px solid #DCFCE7; border-radius:10px; padding:14px; margin:6px 0 20px;">
+            <div style="font-size:0.85rem; color:#64748B;">รหัสจองของคุณ (เก็บไว้ตรวจสอบสถานะ)</div>
+            <div style="font-size:1.4rem; font-weight:700; color:#15803D; letter-spacing:1px;"><?php echo htmlspecialchars($booking_ref); ?></div>
+            <div style="font-size:0.8rem; color:#94A3B8; margin-top:4px;">ตรวจสอบด้วยรหัสนี้ หรือเบอร์ <?php echo htmlspecialchars($phone); ?> ก็ได้</div>
+        </div>
+        <a href="check_booking.php?phone=<?php echo urlencode($booking_ref); ?>" class="btn-home" style="background:#FFF; color:#15803D; border:1px solid #15803D; margin-right:8px;">ตรวจสอบการจอง</a>
         <a href="index.php" class="btn-home">กลับสู่หน้าหลัก</a>
     </div>
 </body>

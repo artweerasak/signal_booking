@@ -18,14 +18,15 @@ if (isset($pdo) && $pdo instanceof PDO) {
     $active_pdo = $conn;
 }
 
+// ค้นได้ทั้งเบอร์โทร และรหัสจอง (BK...) — ใส่อะไรมาก็หาให้
 $phone_search = trim($_GET['phone'] ?? '');
 $bookings = [];
 $searched = false;
 
 if (!empty($phone_search)) {
     $searched = true;
-    $stmt = $active_pdo->prepare("SELECT * FROM bookings WHERE phone = ? ORDER BY id DESC");
-    $stmt->execute([$phone_search]);
+    $stmt = $active_pdo->prepare("SELECT * FROM bookings WHERE phone = ? OR booking_no = ? ORDER BY id DESC");
+    $stmt->execute([$phone_search, $phone_search]);
     $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 ?>
@@ -66,11 +67,11 @@ if (!empty($phone_search)) {
     <div class="container">
         <div class="card">
             <h2>🔍 ตรวจสอบสถานะการจองสนาม</h2>
-            <p class="subtitle">กรอกเบอร์โทรศัพท์ที่ใช้ในการจองเพื่อดูประวัติและสถานะ</p>
-            
+            <p class="subtitle">กรอกเบอร์โทรศัพท์ หรือ รหัสจอง (BK...) เพื่อดูประวัติและสถานะ</p>
+
             <form method="GET" action="">
                 <div class="form-group">
-                    <input type="text" name="phone" placeholder="ระบุเบอร์โทรศัพท์ 10 หลัก..." value="<?php echo htmlspecialchars($phone_search); ?>" required>
+                    <input type="text" name="phone" placeholder="เบอร์โทร หรือ รหัสจอง เช่น BK260827ABC123" value="<?php echo htmlspecialchars($phone_search); ?>" required>
                     <button type="submit">ค้นหา</button>
                 </div>
             </form>
@@ -79,7 +80,7 @@ if (!empty($phone_search)) {
 
         <?php if ($searched): ?>
             <div class="card">
-                <h3 style="font-size: 1.1rem; margin-bottom: 15px; font-weight: 600;">ผลการค้นหาสำหรับเบอร์: <?php echo htmlspecialchars($phone_search); ?></h3>
+                <h3 style="font-size: 1.1rem; margin-bottom: 15px; font-weight: 600;">ผลการค้นหาสำหรับ: <?php echo htmlspecialchars($phone_search); ?></h3>
                 
                 <?php if (count($bookings) > 0): ?>
                     <?php foreach ($bookings as $b): ?>
@@ -94,6 +95,10 @@ if (!empty($phone_search)) {
                                         else echo htmlspecialchars($b['status']);
                                     ?>
                                 </span>
+                            </div>
+                            <div class="detail-row">
+                               <span>รหัสจอง:</span>
+                               <span style="color:#15803D; letter-spacing:0.5px;"><?php echo htmlspecialchars($b['booking_no']); ?></span>
                             </div>
                             <div class="detail-row">
                                <span>ประเภทผู้ใช้งาน:</span>
