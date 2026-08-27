@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!in_array($dow, $days, true)) continue;
 
                 // สร้าง booking ต่อวัน (เผื่ออยากยกเลิกเฉพาะวัน)
-                $bookStmt->execute(['LOCK-'.date('Ymd',strtotime($d)).'-'.rand(100,999), $label, $note]);
+                $bookStmt->execute(['LOCK'.date('ymd',strtotime($d)).strtoupper(substr(uniqid(),-5)), $label, $note]);
                 $bid = $conn->lastInsertId();
                 $addedToday = 0;
                 foreach ($slotIds as $sid) {

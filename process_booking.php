@@ -39,8 +39,8 @@ if (!check_form_time($_POST['form_ts'] ?? '', 3, 3600)) {
     error_log('bot blocked (timing) ip=' . client_ip());
     die(err_box("กรุณาลองใหม่อีกครั้ง (โหลดฟอร์มใหม่แล้วกรอกช้าลงเล็กน้อย)"));
 }
-// 3) จำกัดอัตรา: จองได้ไม่เกิน 5 ครั้งต่อ 10 นาที ต่อ IP
-if (!rate_limit_ok($conn, 'booking', 5, 600)) {
+// 3) จำกัดอัตรา: จองได้ไม่เกิน 20 ครั้งต่อ 10 นาที ต่อ IP (รองรับ walk-in หลายคนจากเครื่องเดียว)
+if (!rate_limit_ok($conn, 'booking', 20, 600)) {
     error_log('rate limited (booking) ip=' . client_ip());
     die(err_box("คุณทำรายการบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่"));
 }
@@ -128,8 +128,10 @@ try {
     $active_pdo->beginTransaction();
 
     // 1. บันทึก bookings (total_price คิดจากเซิร์ฟเวอร์ ไม่เชื่อค่าจากผู้ใช้)
+    // booking_no = รหัสอ้างอิงไม่ซ้ำต่อการจอง (ไม่ใช่เบอร์โทร) → เบอร์เดิมจองซ้ำได้ (รองรับ walk-in)
+    $booking_ref = 'BK' . date('ymd') . strtoupper(substr(uniqid(), -6));
     $stmt = $active_pdo->prepare("INSERT INTO bookings (booking_no, fullname, phone, user_type, total_price, slip_image, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())");
-    $stmt->execute([$phone, $fullname, $phone, $user_type, $total, $slip_filename]);
+    $stmt->execute([$booking_ref, $fullname, $phone, $user_type, $total, $slip_filename]);
     $booking_id = $active_pdo->lastInsertId();
 
     // 2. เช็ครอบว่าง (กันจองซ้ำ) แล้วบันทึก booking_items

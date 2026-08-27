@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // การจองภายใน = อนุมัติเลย, ราคา 0, ไม่นับรายได้
             $conn->prepare("INSERT INTO bookings (booking_no, fullname, phone, user_type, total_price, slip_image, status, booking_type, admin_note, created_at)
                             VALUES (?, ?, '-', 'Internal', 0, '', 'approved', 'internal', ?, NOW())")
-                 ->execute(['LOCK-' . time(), $label, $note]);
+                 ->execute(['LOCK' . date('ymd') . strtoupper(substr(uniqid(), -6)), $label, $note]);
             $bid = $conn->lastInsertId();
 
             $check = $conn->prepare("SELECT COUNT(*) FROM booking_items bi JOIN bookings b ON bi.booking_id=b.id
