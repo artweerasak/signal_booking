@@ -35,7 +35,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$windows = $conn->query("SELECT * FROM public_open_windows ORDER BY date_from")->fetchAll(PDO::FETCH_ASSOC);
+$tableMissing = false;
+try {
+    $windows = $conn->query("SELECT * FROM public_open_windows ORDER BY date_from")->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // ตารางยังไม่มี (ยังไม่ได้รัน database_migration.sql) — ไม่ให้ 500 แต่แจ้งให้รัน migration
+    error_log('public_open_windows load failed: ' . $e->getMessage());
+    $windows = [];
+    $tableMissing = true;
+}
 $today = date('Y-m-d');
 $firstOfMonth = date('Y-m-01');
 $lastOfMonth  = date('Y-m-t');
@@ -81,7 +89,14 @@ function win_state($w, $today) {
 
     <?php if ($msg): ?><div class="msg <?= $ok?'ok':'err' ?>"><?= htmlspecialchars($msg) ?></div><?php endif; ?>
 
-    <?php if (empty($windows)): ?>
+    <?php if ($tableMissing): ?>
+        <div class="msg err" style="line-height:1.7;">
+            ❌ <b>ยังใช้งานหน้านี้ไม่ได้</b> — ยังไม่ได้รัน <code>database_migration.sql</code> บนฐานข้อมูล (ไม่พบตาราง <code>public_open_windows</code>)<br>
+            วิธีแก้: เปิด <b>phpMyAdmin</b> → เลือกฐานข้อมูล → แท็บ <b>SQL</b> → วางเนื้อหาไฟล์ <code>database_migration.sql</code> ทั้งหมด → กด Go แล้วรีเฟรชหน้านี้
+        </div>
+    <?php endif; ?>
+
+    <?php if (!$tableMissing && empty($windows)): ?>
         <div class="warn">⚠️ ตอนนี้ <b>ยังไม่มีช่วงที่เปิด</b> — บุคคลทั่วไปจะจองไม่ได้เลย จนกว่าจะเพิ่มช่วงด้านล่าง
             (แนะนำ: ล็อกสวัสดิการให้กำลังพลก่อนที่เมนู "ล็อกประจำ" แล้วค่อยมาเปิดช่วงให้ทั่วไป)</div>
     <?php endif; ?>

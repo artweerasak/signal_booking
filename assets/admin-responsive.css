@@ -8,16 +8,40 @@
 /* ตารางข้อมูล: ครอบด้วย .tbl-wrap เพื่อเลื่อนแนวนอนได้บนจอแคบ */
 .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
+/* ปุ่ม hamburger — ซ่อนบนจอใหญ่ (เดสก์ท็อปโชว์เมนูเป็นแถบปกติ) */
+.nav-toggle { display: none; }
+
 @media (max-width: 640px) {
     body { padding: 12px !important; }
     .wrap { max-width: 100% !important; }
 
-    /* หัวเรื่อง + เมนู */
-    .header { align-items: flex-start !important; }
+    /* หัวเรื่อง + เมนู (hamburger บนมือถือ) */
+    .header { align-items: center !important; }
     .header h1, .top h1 { font-size: 1.1rem !important; }
-    .nav { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
-    .nav a { margin-left: 0 !important; }
     .top { flex-wrap: wrap; gap: 8px; }
+
+    /* ปุ่ม ☰ เมนู — โผล่บนมือถือ กดง่าย เต็มความกว้าง */
+    .nav-toggle {
+        display: block;
+        background: #15803D; color: #FFF; border: none;
+        padding: 12px 16px; border-radius: 8px;
+        font-weight: 600; font-size: 1rem; cursor: pointer;
+        width: 100%; margin-top: 4px;
+    }
+    /* เมนูซ่อนไว้ก่อน → กด ☰ ค่อยกาง เป็นรายการแนวตั้ง ปุ่มใหญ่ */
+    .nav {
+        display: none; flex-direction: column; width: 100%; gap: 0;
+        background: #FFF; border-radius: 10px; margin-top: 8px;
+        overflow: hidden; box-shadow: 0 6px 16px rgba(0,0,0,.12);
+    }
+    .nav.open { display: flex; }
+    .nav a {
+        margin-left: 0 !important;
+        padding: 15px 16px; font-size: 1rem;
+        border-bottom: 1px solid #F1F5F9;
+    }
+    .nav a:last-child { border-bottom: none; }
+    .nav a.logout { background: #FEF2F2; }
 
     /* ฟอร์มหลายคอลัมน์ → เรียงเดี่ยว */
     .grid2, .grid4 { grid-template-columns: 1fr !important; }

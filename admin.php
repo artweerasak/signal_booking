@@ -109,6 +109,7 @@ $csrf = $_SESSION['csrf'];
 <div class="wrap">
     <div class="header">
         <h1>🎾 แดชบอร์ดจัดการการจอง</h1>
+        <button class="nav-toggle" onclick="this.nextElementSibling.classList.toggle('open')" aria-label="เปิดเมนู">☰ เมนู</button>
         <div class="nav">
             <a href="admin_calendar.php">🗓️ ปฏิทินสนาม</a>
             <a href="admin_public_windows.php">📆 เปิดรับจองสาธารณะ</a>

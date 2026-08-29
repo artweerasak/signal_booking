@@ -89,7 +89,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$promos = $conn->query("SELECT * FROM promos ORDER BY sort_order ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
+$tableMissing = false;
+try {
+    $promos = $conn->query("SELECT * FROM promos ORDER BY sort_order ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log('promos load failed: ' . $e->getMessage());
+    $promos = [];
+    $tableMissing = true;
+}
 $csrf = $_SESSION['csrf'];
 ?>
 <!DOCTYPE html>
@@ -129,6 +136,13 @@ $csrf = $_SESSION['csrf'];
     <div class="top"><h1 style="font-size:1.3rem;">🖼️ รูปโปรโมท / แคปชั่น</h1><a href="admin.php">← กลับแดชบอร์ด</a></div>
 
     <?php if ($msg): ?><div class="msg <?= $ok?'ok':'err' ?>"><?= htmlspecialchars($msg) ?></div><?php endif; ?>
+
+    <?php if ($tableMissing): ?>
+        <div class="msg err" style="line-height:1.7;">
+            ❌ <b>ยังใช้งานหน้านี้ไม่ได้</b> — ยังไม่ได้รัน <code>database_migration.sql</code> (ไม่พบตาราง <code>promos</code>)<br>
+            วิธีแก้: phpMyAdmin → เลือกฐานข้อมูล → แท็บ SQL → วาง <code>database_migration.sql</code> ทั้งหมด → Go แล้วรีเฟรช
+        </div>
+    <?php endif; ?>
 
     <div class="card">
         <h2 style="font-size:1.05rem;margin-bottom:6px;">➕ เพิ่มสไลด์ใหม่</h2>
