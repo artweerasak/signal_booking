@@ -31,10 +31,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $conn->beginTransaction();
+            // รหัสชุดล็อก — ทุกวันในการล็อกครั้งนี้ใช้รหัสเดียวกัน เพื่อให้ "ยกเลิกทั้งชุด" ได้ในคลิกเดียว
+            $batchId = 'LB' . date('ymdHis') . strtoupper(substr(uniqid(), -4));
             $checkStmt = $conn->prepare("SELECT COUNT(*) FROM booking_items bi JOIN bookings b ON bi.booking_id=b.id
                                          WHERE bi.court_id=? AND bi.booking_date=? AND bi.slot_id=? AND b.status IN ('pending','approved')");
-            $bookStmt = $conn->prepare("INSERT INTO bookings (booking_no, fullname, phone, user_type, total_price, slip_image, status, booking_type, admin_note, created_at)
-                                        VALUES (?, ?, '-', 'Internal', 0, '', 'approved', 'internal', ?, NOW())");
+            $bookStmt = $conn->prepare("INSERT INTO bookings (booking_no, fullname, phone, user_type, total_price, slip_image, status, booking_type, admin_note, lock_batch, created_at)
+                                        VALUES (?, ?, '-', 'Internal', 0, '', 'approved', 'internal', ?, ?, NOW())");
             $itemStmt = $conn->prepare("INSERT INTO booking_items (booking_id, court_id, slot_id, booking_date, time_slot, price) VALUES (?, ?, ?, ?, ?, 0)");
 
             $totalSlots = 0; $daysCount = 0;
@@ -46,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!in_array($dow, $days, true)) continue;
 
                 // สร้าง booking ต่อวัน (เผื่ออยากยกเลิกเฉพาะวัน)
-                $bookStmt->execute(['LOCK'.date('ymd',strtotime($d)).strtoupper(substr(uniqid(),-5)), $label, $note]);
+                $bookStmt->execute(['LOCK'.date('ymd',strtotime($d)).strtoupper(substr(uniqid(),-5)), $label, $note, $batchId]);
                 $bid = $conn->lastInsertId();
                 $addedToday = 0;
                 foreach ($slotIds as $sid) {
@@ -97,7 +99,8 @@ $lastOfMonth  = date('Y-m-t');
     button{margin-top:20px;width:100%;padding:12px;background:#4338CA;color:#FFF;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:1rem;}
     .msg{padding:12px;border-radius:8px;margin-bottom:16px;font-size:0.9rem;}
     .msg.ok{background:#DCFCE7;color:#15803D;} .msg.err{background:#FEE2E2;color:#DC2626;}
-</style></head>
+</style>    <link rel="stylesheet" href="assets/admin-responsive.css">
+</head>
 <body>
 <div class="wrap">
     <div class="top"><h1 style="font-size:1.3rem;">🔒 ล็อกประจำ (ทำซ้ำหลายวัน)</h1><a href="admin.php">← กลับแดชบอร์ด</a></div>

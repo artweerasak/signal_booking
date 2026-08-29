@@ -21,6 +21,7 @@ if (file_exists('config/database.php')) {
 }
 require_once 'config/security.php';
 require_once 'config/pricing.php';
+require_once 'config/booking_window.php';
 $slotConfig = require 'config/slots.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -115,6 +116,10 @@ try {
         $date     = $item['date'] ?? date('Y-m-d');
         if (!isset($slotMap[$slot_id]) || !isset($slotConfig['courts'][$court_id]) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
             throw new Exception("ข้อมูลรอบเวลาไม่ถูกต้อง");
+        }
+        // กันจองวันที่แอดมินยังไม่เปิดรับจองสาธารณะ (เช็คฝั่งเซิร์ฟเวอร์ ไม่เชื่อค่าจากผู้ใช้)
+        if (!is_date_open($active_pdo, $date)) {
+            throw new Exception("วันที่ {$date} ยังไม่เปิดรับจอง กรุณาเลือกวันในช่วงที่เปิดรับจอง");
         }
         $slot = $slotMap[$slot_id];
         if (!array_key_exists($date, $overrideCache)) $overrideCache[$date] = get_price_override($active_pdo, $date);

@@ -1,0 +1,44 @@
+/* ───────────────────────────────────────────────────────────────
+   Responsive สำหรับหน้าแอดมิน (แอดมินใช้มือถือเป็นหลัก)
+   โหลดไฟล์นี้ "หลัง" <style> ภายในของแต่ละหน้า → กฎ media ด้านล่างชนะ
+   คลาสที่อ้างถึงใช้ร่วมกันเกือบทุกหน้าแอดมิน (.wrap .top .nav .card
+   .grid2 .grid4 .stats .cards .actions .rainbar .tbl-wrap ฯลฯ)
+─────────────────────────────────────────────────────────────── */
+
+/* ตารางข้อมูล: ครอบด้วย .tbl-wrap เพื่อเลื่อนแนวนอนได้บนจอแคบ */
+.tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+@media (max-width: 640px) {
+    body { padding: 12px !important; }
+    .wrap { max-width: 100% !important; }
+
+    /* หัวเรื่อง + เมนู */
+    .header { align-items: flex-start !important; }
+    .header h1, .top h1 { font-size: 1.1rem !important; }
+    .nav { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+    .nav a { margin-left: 0 !important; }
+    .top { flex-wrap: wrap; gap: 8px; }
+
+    /* ฟอร์มหลายคอลัมน์ → เรียงเดี่ยว */
+    .grid2, .grid4 { grid-template-columns: 1fr !important; }
+
+    /* การ์ดสถิติ → 2 คอลัมน์พอดีจอ */
+    .stats, .cards { grid-template-columns: 1fr 1fr !important; }
+    .stat .n { font-size: 1.3rem !important; }
+
+    /* แถบสถานะ (ฝนตก / เปิดจอง) เรียงลง เต็มความกว้าง */
+    .rainbar { flex-direction: column; align-items: stretch !important; gap: 10px; }
+    .rainbar form, .rainbar a, .rainbar button { width: 100%; text-align: center; }
+
+    /* ปุ่มจัดการในการ์ดจอง → เรียงลง กดง่ายบนมือถือ */
+    .actions { flex-direction: column; align-items: stretch; }
+    .actions form, .actions .inline { display: block !important; width: 100%; }
+    .actions button, .actions a { width: 100%; text-align: center; }
+
+    /* ตารางกว้าง ๆ ให้เลื่อนได้ ไม่ดันหน้าเว็บ */
+    .tbl-wrap table { min-width: 520px; }
+
+    .card { padding: 16px !important; }
+    /* แถบเลือกปี/เดือน (รายงาน) ปุ่ม CSV ไม่ต้องดันขวาสุด */
+    .bar .csv { margin-left: 0 !important; }
+}

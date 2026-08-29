@@ -95,7 +95,8 @@ $csrf = $_SESSION['csrf'];
     .items{background:#F8FAFC;border-radius:8px;padding:12px;font-size:0.88rem;color:#475569;}
     .msg{padding:12px;border-radius:8px;margin-bottom:16px;font-size:0.9rem;}
     .msg.ok{background:#DCFCE7;color:#15803D;} .msg.err{background:#FEE2E2;color:#DC2626;}
-</style></head>
+</style>    <link rel="stylesheet" href="assets/admin-responsive.css">
+</head>
 <body>
 <div class="wrap">
     <div class="top"><h1 style="font-size:1.25rem;">✎ แก้ไขการจอง #<?= $id ?></h1><a href="admin.php">← กลับแดชบอร์ด</a></div>

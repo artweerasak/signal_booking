@@ -6,6 +6,7 @@ date_default_timezone_set('Asia/Bangkok');
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/pricing.php';
+require_once __DIR__ . '/../config/booking_window.php';
 $slotConfig = require __DIR__ . '/../config/slots.php';
 
 $date     = $_GET['date'] ?? date('Y-m-d');
@@ -36,6 +37,9 @@ try {
     $base = get_base_prices($conn);
     $override = get_price_override($conn, $date);
 
+    // วันนี้อยู่ในช่วงที่แอดมิน "เปิดรับจองสาธารณะ" ไหม — ถ้าไม่เปิด ปิดทุกรอบ
+    $dateOpen = is_date_open($conn, $date);
+
     $out = [];
     foreach ($baseSlots as $slot) {
         $slot['price'] = slot_price($base, $override, $slot['type']); // ราคาตามวัน
@@ -45,16 +49,23 @@ try {
         $isPast = ($date < $currentDate)
             || ($date === $currentDate && $currentTime >= $slot['start']);
 
-        if ($isBooked)      { $status = 'booked'; }
+        if (!$dateOpen)     { $status = 'closed'; }   // ยังไม่เปิดรับจองในวันนี้
+        elseif ($isBooked)  { $status = 'booked'; }
         elseif ($isPast)    { $status = 'past'; }
         else                { $status = 'available'; }
 
-        $slot['disabled'] = $isBooked || $isPast;
-        $slot['status']   = $status; // available | booked | past  (ไม่บอกว่าใครจอง)
+        $slot['disabled'] = !$dateOpen || $isBooked || $isPast;
+        $slot['status']   = $status; // available | booked | past | closed  (ไม่บอกว่าใครจอง)
         $out[] = $slot;
     }
 
-    echo json_encode(['success' => true, 'slots' => $out]);
+    // ส่งช่วงที่เปิดกลับไปด้วย เพื่อให้หน้าเว็บบอกผู้ใช้ได้ว่าเปิดจองช่วงไหนบ้าง
+    $windows = [];
+    foreach (get_open_windows($conn) as $w) {
+        $windows[] = ['from' => $w['date_from'], 'to' => $w['date_to']];
+    }
+
+    echo json_encode(['success' => true, 'slots' => $out, 'date_open' => $dateOpen, 'open_windows' => $windows]);
 } catch (PDOException $e) {
     error_log('get_slots failed: ' . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'ไม่สามารถโหลดสถานะรอบเวลาได้']);

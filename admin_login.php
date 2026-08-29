@@ -78,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-bottom: 20px;
         }
     </style>
+    <link rel="stylesheet" href="assets/admin-responsive.css">
 </head>
 <body>
 

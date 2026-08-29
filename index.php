@@ -1,9 +1,29 @@
 <?php
+date_default_timezone_set('Asia/Bangkok');
 require_once 'config/database.php';
+require_once 'config/booking_window.php';
 
 // ดึงการตั้งค่าระบบ
 $stmtSettings = $conn->query("SELECT setting_key, setting_value FROM system_settings");
 $settings = $stmtSettings->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// ช่วงที่ "เปิดรับจองสาธารณะ" (โชว์ให้ผู้ใช้รู้ว่าจองวันไหนได้บ้าง)
+$openWindows = get_open_windows($conn);
+$openWindowsUpcoming = array_values(array_filter($openWindows, function ($w) {
+    return $w['date_to'] >= date('Y-m-d');
+}));
+
+// สไลด์โปรโมท (แอดมินแก้รูป/แคปชั่นได้ที่ admin_promos.php)
+try {
+    $promos = $conn->query("SELECT image, heading, caption FROM promos WHERE is_active=1 ORDER BY sort_order ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { $promos = []; }
+if (empty($promos)) {
+    $promos = [[
+        'image'   => '/assets/images/logo.png',
+        'heading' => 'ยินดีต้อนรับสู่ระบบจองสนามเทนนิส',
+        'caption' => 'เลือกวันและรอบเวลาที่ต้องการ แล้วจองออนไลน์ได้ทันที',
+    ]];
+}
 
 // กำหนดเบอร์ติดต่อเป็นเบอร์ใหม่โดยตรง
 $contact_phone = '087-562-7531';
@@ -107,10 +127,11 @@ $selected_date = $_GET['booking_date'] ?? date('Y-m-d');
 
         /* Hero Carousel Section */
         .hero-slider { position: relative; overflow: hidden; width: 100%; height: 380px; background: var(--theme-dark); }
-        .slide-track { display: flex; width: 400%; height: 100%; transition: transform 0.7s cubic-bezier(0.25, 1, 0.5, 1); }
-        .slide { 
-            width: 25%; 
-            height: 100%; 
+        .slide-track { display: flex; height: 100%; transition: transform 0.7s cubic-bezier(0.25, 1, 0.5, 1); }
+        .slide {
+            flex: 0 0 100%;
+            width: 100%;
+            height: 100%;
             position: relative; 
             background-size: cover; 
             background-position: center; 
@@ -154,6 +175,14 @@ $selected_date = $_GET['booking_date'] ?? date('Y-m-d');
         .dots-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 12; display: flex; gap: 10px; }
         .dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.35); transition: all 0.3s; }
         .dot.active { background: #FFFFFF; width: 32px; border-radius: 10px; box-shadow: 0 0 8px rgba(255,255,255,0.5); }
+        @media (max-width: 600px) {
+            .hero-slider { height: 240px; }
+            .slide { padding: 0 6%; }
+            .slide-content h1 { font-size: 1.4rem; }
+            .slide-content p { font-size: 0.85rem; }
+            .slider-btn { width: 38px; height: 38px; font-size: 1rem; }
+            .slider-btn.prev { left: 12px; } .slider-btn.next { right: 12px; }
+        }
 
         /* Main Grid */
         .wrapper { max-width: 1250px; margin: 30px auto 40px auto; padding: 0 15px; display: grid; grid-template-columns: 1fr 420px; gap: 24px; }
@@ -235,48 +264,29 @@ $selected_date = $_GET['booking_date'] ?? date('Y-m-d');
         </div>
     </div>
 
-    <!-- Hero Slider -->
+    <!-- Hero Slider (ดึงจากตาราง promos — แอดมินแก้ได้ที่ admin_promos.php) -->
     <div class="hero-slider">
         <div class="slide-track" id="slideTrack">
-            <!-- Slide 1 -->
-            <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&w=1600&q=80');">
+            <?php foreach ($promos as $pm): ?>
+            <div class="slide" style="background-image: url('<?= htmlspecialchars($pm['image'], ENT_QUOTES) ?>');">
                 <div class="slide-content">
-                    <h1>ยกระดับเกมเทนนิสของคุณ บนสนามมาตรฐานสากล</h1>
-                    <p>ระบบจองสนามออนไลน์ที่สะดวกที่สุด เลือกจองล่วงหน้าได้หลายวันและเลือกรอบเวลาที่ต้องการได้ทันที</p>
+                    <h1><?= htmlspecialchars($pm['heading']) ?></h1>
+                    <?php if (!empty($pm['caption'])): ?><p><?= htmlspecialchars($pm['caption']) ?></p><?php endif; ?>
                 </div>
             </div>
-            <!-- Slide 2 -->
-            <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1530915534664-4ac6423ca938?auto=format&fit=crop&w=1600&q=80');">
-                <div class="slide-content">
-                    <h1>สัมผัสประสบการณ์เล่นยามค่ำคืน</h1>
-                    <p>ระบบไฟส่องสว่าง LED คุณภาพสูง กระจายแสงสม่ำเสมอ คมชัดสบายตา เหมาะสำหรับการฝึกซ้อมและการแข่งขัน</p>
-                </div>
-            </div>
-            <!-- Slide 3 -->
-            <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?auto=format&fit=crop&w=1600&q=80');">
-                <div class="slide-content">
-                    <h1>สิ่งอำนวยความสะดวกครบครัน</h1>
-                    <p>ลานจอดรถกว้างขวาง ปลอดภัยภายในพื้นที่กรมการทหารสื่อสาร พร้อมห้องน้ำ จุดพักนักกีฬา และการดูแลอย่างเป็นกันเอง</p>
-                </div>
-            </div>
-            <!-- Slide 4 -->
-            <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?auto=format&fit=crop&w=1600&q=80');">
-                <div class="slide-content">
-                    <h1>สิทธิพิเศษสำหรับกำลังพลและสมาชิก</h1>
-                    <p>รับอัตราค่าบริการพิเศษในการซ้อมประจำ และกิจกรรมแข่งขันกระชับมิตร ติดต่อเจ้าหน้าที่เพื่อสอบถามข้อมูลเพิ่มเติม</p>
-                </div>
-            </div>
+            <?php endforeach; ?>
         </div>
 
+        <?php if (count($promos) > 1): ?>
         <button class="slider-btn prev" onclick="moveSlide(-1)">❮</button>
         <button class="slider-btn next" onclick="moveSlide(1)">❯</button>
 
         <div class="dots-container" id="dotsContainer">
-            <div class="dot active" onclick="goToSlide(0)"></div>
-            <div class="dot" onclick="goToSlide(1)"></div>
-            <div class="dot" onclick="goToSlide(2)"></div>
-            <div class="dot" onclick="goToSlide(3)"></div>
+            <?php foreach ($promos as $i => $pm): ?>
+            <div class="dot <?= $i===0?'active':'' ?>" onclick="goToSlide(<?= $i ?>)"></div>
+            <?php endforeach; ?>
         </div>
+        <?php endif; ?>
     </div>
 
     <!-- Main Container -->
@@ -285,6 +295,26 @@ $selected_date = $_GET['booking_date'] ?? date('Y-m-d');
         <!-- Left Section: Controls & Slots -->
         <div>
             <div class="card">
+                <?php
+                    $fmtTh = function ($ymd) {
+                        $m = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+                        $t = strtotime($ymd);
+                        return (int)date('j', $t) . ' ' . $m[(int)date('n', $t)] . ' ' . ((int)date('Y', $t) + 543);
+                    };
+                ?>
+                <?php if (empty($openWindowsUpcoming)): ?>
+                    <div style="background:#FEF3C7;color:#854D0E;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:0.9rem;line-height:1.6;">
+                        📌 ขณะนี้ <b>ยังไม่เปิดรับจองออนไลน์</b> กรุณาติดต่อเจ้าหน้าที่ หรือรอประกาศเปิดจอง
+                    </div>
+                <?php else: ?>
+                    <div style="background:#F0FDF4;color:#166534;border:1px solid #DCFCE7;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:0.9rem;line-height:1.7;">
+                        📅 <b>ช่วงที่เปิดให้จองออนไลน์:</b><br>
+                        <?php foreach ($openWindowsUpcoming as $w): ?>
+                            • <?= htmlspecialchars($fmtTh($w['date_from'])) ?> – <?= htmlspecialchars($fmtTh($w['date_to'])) ?><br>
+                        <?php endforeach; ?>
+                        <span style="color:#64748B;font-size:0.82rem;">*วันอื่นนอกช่วงนี้ยังไม่เปิดรับจอง</span>
+                    </div>
+                <?php endif; ?>
                 <div class="form-row">
                     <div class="field">
                         <label>📅 เลือกวันที่ใช้งาน</label>
@@ -392,20 +422,21 @@ $selected_date = $_GET['booking_date'] ?? date('Y-m-d');
             }
         }
 
-        // Hero Slide Logic
+        // Hero Slide Logic (จำนวนสไลด์มาจากตาราง promos)
         let currentSlide = 0;
-        const totalSlides = 4;
+        const totalSlides = <?= count($promos) ?>;
         const slideTrack = document.getElementById('slideTrack');
         const dots = document.querySelectorAll('.dot');
 
         function updateSlider() {
-            slideTrack.style.transform = `translateX(-${currentSlide * (100 / totalSlides)}%)`;
+            slideTrack.style.transform = `translateX(-${currentSlide * 100}%)`;
             dots.forEach((dot, index) => {
                 dot.classList.toggle('active', index === currentSlide);
             });
         }
 
         function moveSlide(direction) {
+            if (totalSlides <= 1) return;
             currentSlide = (currentSlide + direction + totalSlides) % totalSlides;
             updateSlider();
         }
@@ -415,11 +446,14 @@ $selected_date = $_GET['booking_date'] ?? date('Y-m-d');
             updateSlider();
         }
 
-        setInterval(() => { moveSlide(1); }, 6000);
+        if (totalSlides > 1) {
+            setInterval(() => { moveSlide(1); }, 6000);
+        }
 
         // Rate Rules: 06:00 - 18:00 = 120฿ | 18:00 - 21:00 = 150฿
         // ดึงสถานะรอบว่างจริงจากเซิร์ฟเวอร์ (กันจองซ้ำ + แสดง "ไม่ว่าง")
         let rawSlots = [];   // จะถูกเติมจาก api/get_slots.php
+        let dateOpen = true; // วันที่เลือกอยู่ในช่วงที่แอดมินเปิดรับจองไหม
         let cart = [];
 
         async function loadSlots() {
@@ -431,8 +465,10 @@ $selected_date = $_GET['booking_date'] ?? date('Y-m-d');
                 const res = await fetch(`api/get_slots.php?date=${encodeURIComponent(date)}&court_id=${encodeURIComponent(court)}`);
                 const data = await res.json();
                 rawSlots = (data && data.success) ? data.slots : [];
+                dateOpen = (data && data.success) ? (data.date_open !== false) : true;
             } catch (e) {
                 rawSlots = [];
+                dateOpen = true;
             }
             renderSlots();
         }
@@ -443,7 +479,15 @@ $selected_date = $_GET['booking_date'] ?? date('Y-m-d');
             const currentCourt = document.getElementById('courtSelect').value;
             
             container.innerHTML = '';
-            
+
+            // วันที่เลือกยังไม่เปิดรับจอง (นอกช่วงที่แอดมินกำหนด) → แสดงข้อความแทนรอบเวลา
+            if (!dateOpen) {
+                container.innerHTML = `<div style="padding:24px;text-align:center;color:#B45309;background:#FEF3C7;border-radius:12px;line-height:1.7;">
+                    📅 <b>วันที่เลือกยังไม่เปิดรับจอง</b><br>
+                    <small>กรุณาเลือกวันที่อยู่ในช่วงที่เปิดรับจอง (ดูรายการช่วงที่เปิดด้านบน)</small></div>`;
+                return;
+            }
+
             // ดึงวันที่และเวลาปัจจุบันของเครื่องผู้.ช้
             const now = new Date();
             const todayStr = now.getFullYear()+"-"+

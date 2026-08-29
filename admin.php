@@ -1,6 +1,7 @@
 <?php
 require 'admin_auth.php';
 require 'config/database.php';
+date_default_timezone_set('Asia/Bangkok');
 
 // ── สลับโหมดฝนตก (ปิดสนามทั้งเว็บ) ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['do'] ?? '') === 'rain') {
@@ -26,6 +27,26 @@ $stats['revenue_month'] = (float) $stmtRev->fetchColumn();
 
 $rain = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='rain_mode'")->fetchColumn();
 $rainOn = ($rain === '1');
+
+// ── สถานะ "เปิดรับจองสาธารณะ" (ช่วงที่ยังไม่ผ่านไป) ──
+$today = date('Y-m-d');
+$openNow = 0; $openUpcoming = 0;
+try {
+    $wStmt = $conn->prepare("SELECT date_from, date_to FROM public_open_windows WHERE date_to >= ?");
+    $wStmt->execute([$today]);
+    foreach ($wStmt->fetchAll(PDO::FETCH_ASSOC) as $w) {
+        if ($today >= $w['date_from']) $openNow++; else $openUpcoming++;
+    }
+} catch (PDOException $e) { error_log('open windows load failed: '.$e->getMessage()); }
+
+// ── นับจำนวนวันที่ยัง active ในแต่ละชุดล็อก (ไว้โชว์บนปุ่ม "ยกเลิกทั้งชุด") ──
+$batchCounts = [];
+try {
+    foreach ($conn->query("SELECT lock_batch, COUNT(*) AS c FROM bookings
+                           WHERE lock_batch IS NOT NULL AND status <> 'cancelled' GROUP BY lock_batch") as $r) {
+        $batchCounts[$r['lock_batch']] = (int) $r['c'];
+    }
+} catch (PDOException $e) { error_log('batch counts failed: '.$e->getMessage()); }
 
 // ── กรองรายการ ──
 $filter = $_GET['status'] ?? 'all';
@@ -82,6 +103,7 @@ $csrf = $_SESSION['csrf'];
         .empty{text-align:center;color:#94A3B8;padding:40px;}
         form.inline{display:inline;}
     </style>
+    <link rel="stylesheet" href="assets/admin-responsive.css">
 </head>
 <body>
 <div class="wrap">
@@ -89,8 +111,10 @@ $csrf = $_SESSION['csrf'];
         <h1>🎾 แดชบอร์ดจัดการการจอง</h1>
         <div class="nav">
             <a href="admin_calendar.php">🗓️ ปฏิทินสนาม</a>
+            <a href="admin_public_windows.php">📆 เปิดรับจองสาธารณะ</a>
             <a href="admin_reports.php">📊 รายงานรายได้</a>
             <a href="admin_pricing.php">💰 ปรับราคา</a>
+            <a href="admin_promos.php">🖼️ รูปโปรโมท</a>
             <a href="admin_add_booking.php">➕ เพิ่ม/ล็อกการจอง</a>
             <a href="admin_bulk_lock.php">🔒 ล็อกประจำ</a>
             <a href="admin_logout.php" class="logout">ออกจากระบบ ↪</a>
@@ -103,6 +127,19 @@ $csrf = $_SESSION['csrf'];
         <div class="stat"><div class="n"><?= $stats['pending'] ?></div><div class="l">รอตรวจสอบ</div></div>
         <div class="stat"><div class="n"><?= $stats['approved'] ?></div><div class="l">อนุมัติแล้ว</div></div>
         <div class="stat"><div class="n"><?= $stats['total'] ?></div><div class="l">การจองทั้งหมด</div></div>
+    </div>
+
+    <div class="rainbar" style="background:<?= $openNow>0 ? '#F0FDF4' : '#FEF3C7' ?>;">
+        <div>เปิดรับจองสาธารณะ:
+            <?php if ($openNow > 0): ?>
+                <b style="color:#15803D;">เปิดอยู่ตอนนี้ <?= $openNow ?> ช่วง ✅</b>
+            <?php elseif ($openUpcoming > 0): ?>
+                <b style="color:#B45309;">ยังไม่ถึงวันเปิด (ตั้งไว้ <?= $openUpcoming ?> ช่วงล่วงหน้า)</b>
+            <?php else: ?>
+                <b style="color:#DC2626;">ยังไม่เปิด — บุคคลทั่วไปจองไม่ได้</b>
+            <?php endif; ?>
+        </div>
+        <a href="admin_public_windows.php" style="text-decoration:none;padding:7px 16px;border-radius:8px;font-weight:600;color:#FFF;background:#4338CA;">จัดการช่วงเปิดจอง →</a>
     </div>
 
     <div class="rainbar">
@@ -145,15 +182,24 @@ $csrf = $_SESSION['csrf'];
                 <?php endif; ?>
             </div>
             <div class="actions">
+                <?php $isLock = (($b['booking_type'] ?? 'public') === 'internal'); ?>
                 <?php if ($b['status'] === 'pending'): ?>
                     <form class="inline" method="POST" action="admin_action.php" onsubmit="return confirm('อนุมัติการจองนี้?');">
                         <input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="id" value="<?= (int)$b['id'] ?>"><input type="hidden" name="action" value="approve">
                         <button class="btn-approve" type="submit">✓ อนุมัติ</button>
                     </form>
-                    <form class="inline" method="POST" action="admin_action.php" onsubmit="return confirm('ยกเลิกการจองนี้?');">
+                <?php endif; ?>
+                <?php if ($b['status'] !== 'cancelled'): ?>
+                    <form class="inline" method="POST" action="admin_action.php" onsubmit="return confirm('<?= $isLock ? 'ยกเลิกการล็อกวันนี้?' : 'ยกเลิกการจองนี้?' ?>');">
                         <input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="id" value="<?= (int)$b['id'] ?>"><input type="hidden" name="action" value="cancel">
-                        <button class="btn-cancel" type="submit">✕ ยกเลิก</button>
+                        <button class="btn-cancel" type="submit">✕ <?= $isLock ? 'ยกเลิกล็อก (วันนี้)' : 'ยกเลิก' ?></button>
                     </form>
+                    <?php if ($isLock && !empty($b['lock_batch']) && ($batchCounts[$b['lock_batch']] ?? 0) > 1): ?>
+                        <form class="inline" method="POST" action="admin_action.php" onsubmit="return confirm('ยกเลิกการล็อกทั้งชุด <?= (int)$batchCounts[$b['lock_batch']] ?> วันที่ล็อกพร้อมกัน?');">
+                            <input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="cancel_batch"><input type="hidden" name="batch" value="<?= htmlspecialchars($b['lock_batch']) ?>">
+                            <button class="btn-cancel" type="submit" style="background:#DC2626;color:#FFF;">✕✕ ยกเลิกทั้งชุด (<?= (int)$batchCounts[$b['lock_batch']] ?> วัน)</button>
+                        </form>
+                    <?php endif; ?>
                 <?php endif; ?>
                 <a class="btn-edit" href="admin_edit_booking.php?id=<?= (int)$b['id'] ?>">✎ แก้ไข/เลื่อนวัน</a>
             </div>

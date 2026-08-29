@@ -73,7 +73,8 @@ $csrf = $_SESSION['csrf'];
     .msg{padding:12px;border-radius:8px;margin-bottom:16px;font-size:0.9rem;}
     .msg.ok{background:#DCFCE7;color:#15803D;} .msg.err{background:#FEE2E2;color:#DC2626;}
     .empty{color:#94A3B8;padding:16px;text-align:center;}
-</style></head>
+</style>    <link rel="stylesheet" href="assets/admin-responsive.css">
+</head>
 <body>
 <div class="wrap">
     <div class="top"><h1 style="font-size:1.3rem;">💰 ปรับราคาค่าเช่าสนาม</h1><a href="admin.php">← กลับแดชบอร์ด</a></div>
@@ -106,6 +107,7 @@ $csrf = $_SESSION['csrf'];
             <button class="add" type="submit">➕ เพิ่ม/แก้ราคาวันนี้</button>
         </form>
 
+        <div class="tbl-wrap">
         <table>
             <tr><th>วันที่</th><th>กลางวัน</th><th>กลางคืน</th><th>หมายเหตุ</th><th></th></tr>
             <?php if (empty($overrides)): ?>
@@ -125,6 +127,7 @@ $csrf = $_SESSION['csrf'];
                 </tr>
             <?php endforeach; endif; ?>
         </table>
+        </div>
     </div>
 </div>
 </body>

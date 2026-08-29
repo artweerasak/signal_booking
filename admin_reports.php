@@ -100,7 +100,8 @@ $csvLink = '?'.http_build_query(['view'=>$view,'year'=>$year,'month'=>$month,'ex
     .up{color:#16A34A;font-size:0.82rem;} .down{color:#DC2626;font-size:0.82rem;} .flat{color:#94A3B8;font-size:0.82rem;}
     tfoot td{font-weight:700;border-top:2px solid #E2E8F0;color:#0F172A;}
     .empty{text-align:center;color:#94A3B8;padding:30px;}
-</style></head>
+</style>    <link rel="stylesheet" href="assets/admin-responsive.css">
+</head>
 <body>
 <div class="wrap">
     <div class="top"><h1 style="font-size:1.3rem;">📊 รายงานรายได้</h1><a href="admin.php">← กลับแดชบอร์ด</a></div>
@@ -132,6 +133,7 @@ $csvLink = '?'.http_build_query(['view'=>$view,'year'=>$year,'month'=>$month,'ex
     </div>
 
     <div class="card">
+        <div class="tbl-wrap">
         <table>
             <thead>
                 <tr>
@@ -181,6 +183,7 @@ $csvLink = '?'.http_build_query(['view'=>$view,'year'=>$year,'month'=>$month,'ex
             </tfoot>
             <?php endif; ?>
         </table>
+        </div>
     </div>
     <p style="font-size:0.8rem;color:#94A3B8;margin-top:10px;">* รายได้ = การจองสาธารณะที่ "อนุมัติแล้ว" นับตามวันที่ใช้สนาม · การล็อกภายในไม่นับเป็นรายได้</p>
 </div>

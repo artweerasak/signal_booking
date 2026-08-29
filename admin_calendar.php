@@ -77,6 +77,7 @@ $free = $totalCells - $booked;
         td.cell small{font-size:0.68rem;font-weight:600;}
         .summary{font-size:0.85rem;color:#64748B;margin:12px 2px;}
     </style>
+    <link rel="stylesheet" href="assets/admin-responsive.css">
 </head>
 <body>
 <div class="wrap">
