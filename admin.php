@@ -102,8 +102,19 @@ $csrf = $_SESSION['csrf'];
         .slip-link{color:#2563EB;text-decoration:none;font-size:0.85rem;}
         .empty{text-align:center;color:#94A3B8;padding:40px;}
         form.inline{display:inline;}
+        /* ── Hamburger menu (มือถือ) — ฝังในหน้านี้ให้ชัวร์ ไม่ต้องพึ่งไฟล์ CSS ภายนอก ── */
+        .nav-toggle{display:none;background:#15803D;color:#FFF;border:none;padding:10px 16px;border-radius:8px;font-weight:600;font-size:1rem;cursor:pointer;}
+        @media (max-width:640px){
+            .header{align-items:center;}
+            .nav-toggle{display:block !important;width:100%;margin-top:4px;}
+            .nav{display:none !important;flex-direction:column;width:100%;gap:0;background:#FFF;border-radius:10px;margin-top:8px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,.12);}
+            .nav.open{display:flex !important;}
+            .nav a{margin-left:0 !important;padding:15px 16px;font-size:1rem;border-bottom:1px solid #F1F5F9;}
+            .nav a:last-child{border-bottom:none;}
+            .nav a.logout{background:#FEF2F2;}
+        }
     </style>
-    <link rel="stylesheet" href="assets/admin-responsive.css">
+    <link rel="stylesheet" href="assets/admin-responsive.css?v=2">
 </head>
 <body>
 <div class="wrap">
